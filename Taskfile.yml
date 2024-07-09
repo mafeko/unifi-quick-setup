@@ -1,0 +1,66 @@
+# https://taskfile.dev
+version: 3
+
+vars:
+  CLIENT_NAME: "pi-cherry"
+  CLIENT_DOMAIN: "local"
+  
+  CLIENT_HOST: "{{.TASKFILE_DIR}}/{{.CLIENT_NAME}}.{{.CLIENT_DOMAIN}}"
+  CLIENT_USER: "pi"
+  SSH_CERT_FILE: "{{.CLIENT_NAME}}.cert"
+  SSH_CERT_PUB_FILE: "{{.SSH_CERT_FILE}}.pub"
+  TARGET_FOLDER: "/unifi"
+
+tasks:
+  ssh:setup:
+    desc: create keypair for sshing in the raspberry
+    cmds:
+      - ssh-keygen -R {{.CLIENT_HOST}} || true
+      - rm -rf "{{.SSH_CERT_FILE}}*"
+      - ssh-keygen -f {{.SSH_CERT_FILE}} -t rsa-sha2-256 -b 1024
+      - ssh-copy-id -i {{.SSH_CERT_FILE}} {{.CLIENT_USER}}@{{.CLIENT_HOST}}
+      - chmod 700 {{.SSH_CERT_FILE}}
+      - chmod 700 {{.SSH_CERT_PUB_FILE}}
+
+  ssh:client:
+    desc: log into ssh session
+    interactive: true
+    cmds:
+      - ssh -i {{ .SSH_CERT_FILE }} {{.CLIENT_USER}}@{{.CLIENT_HOST}}
+
+  ssh-exec:
+    cmds:
+      - ssh -i {{ .SSH_CERT_FILE }} {{.CLIENT_USER}}@{{.CLIENT_HOST}} 'bash -l -c "{{.SSH_COMMAND}}"'
+
+  raspberry:provision:
+    cmds:
+      - task: ssh-exec
+        vars:
+          {
+            SSH_COMMAND: "sudo mkdir -p {{.TARGET_FOLDER}} && sudo chown {{.CLIENT_USER}} {{.TARGET_FOLDER}} && sudo chmod -R 770 {{.TARGET_FOLDER}}/",
+          }
+      - scp -i {{ .SSH_CERT_FILE }} {{.TASKFILE_DIR}}/provision.sh {{.CLIENT_USER}}@{{.CLIENT_HOST}}:{{.TARGET_FOLDER}}/
+      - task: ssh-exec
+        vars:
+          {
+            SSH_COMMAND: "sudo bash {{.TARGET_FOLDER}}/provision.sh",
+          }
+
+  raspberry:deploy:
+    cmds:
+      - task: ssh-exec
+        vars:
+          {
+            SSH_COMMAND: "sudo mkdir -p {{.TARGET_FOLDER}}/unifi-db {{.TARGET_FOLDER}}/unifi-network-application && sudo chown {{.CLIENT_USER}} {{.TARGET_FOLDER}}/unifi-db && sudo chown {{.CLIENT_USER}} {{.TARGET_FOLDER}}/unifi-network-application && sudo chmod -R 770 {{.TARGET_FOLDER}}/",
+          }
+      - task: ssh-exec
+        vars:
+          {
+            SSH_COMMAND: "sudo systemctl enable docker",
+          }
+      - scp -i {{ .SSH_CERT_FILE }} {{.TASKFILE_DIR}}/unifi/docker-compose.yaml {{.CLIENT_USER}}@{{.CLIENT_HOST}}:{{.TARGET_FOLDER}}/
+      - task: ssh-exec
+        vars:
+          {
+            SSH_COMMAND: "cd {{.TARGET_FOLDER}} && sudo docker compose up -d ",
+          }

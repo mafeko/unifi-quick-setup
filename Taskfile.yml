@@ -3,11 +3,11 @@ version: 3
 
 vars:
   CLIENT_NAME: "pi-cherry"
-  CLIENT_DOMAIN: "local"
+  CLIENT_DOMAIN: "fritz.box"
   
-  CLIENT_HOST: "{{.TASKFILE_DIR}}/{{.CLIENT_NAME}}.{{.CLIENT_DOMAIN}}"
+  CLIENT_HOST: "{{.CLIENT_NAME}}.{{.CLIENT_DOMAIN}}"
   CLIENT_USER: "pi"
-  SSH_CERT_FILE: "{{.CLIENT_NAME}}.cert"
+  SSH_CERT_FILE: "{{.TASKFILE_DIR}}/{{.CLIENT_NAME}}.cert"
   SSH_CERT_PUB_FILE: "{{.SSH_CERT_FILE}}.pub"
   TARGET_FOLDER: "/unifi"
 

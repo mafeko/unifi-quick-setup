@@ -1,5 +1,6 @@
 name: unifi-network-application
 services:
+
   unifi-db:
     container_name: unifi-db
     image: docker.io/mongo:7.0
@@ -22,8 +23,10 @@ services:
     networks:
      - unifi-bridge
     privileged: false
+  
   unifi-network-application:
     container_name: unifi-network-application
+    image: lscr.io/linuxserver/unifi-network-application:latest
     depends_on:
       unifi-db:
         condition: service_started
@@ -37,7 +40,6 @@ services:
       - PGID=1000
       - PUID=1000
       - TZ=Etc/UTC
-    image: lscr.io/linuxserver/unifi-network-application:latest
     ports:
       - target: 8443
         published: "8443"

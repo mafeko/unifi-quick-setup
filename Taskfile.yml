@@ -2,11 +2,11 @@
 version: 3
 
 vars:
-  CLIENT_NAME: "pi-cherry"
-  CLIENT_DOMAIN: "fritz.box"
+  CLIENT_NAME: "pi-banana"
+  CLIENT_DOMAIN: "local"
+  CLIENT_USER: "pi"
   
   CLIENT_HOST: "{{.CLIENT_NAME}}.{{.CLIENT_DOMAIN}}"
-  CLIENT_USER: "pi"
   SSH_CERT_FILE: "{{.TASKFILE_DIR}}/{{.CLIENT_NAME}}.cert"
   SSH_CERT_PUB_FILE: "{{.SSH_CERT_FILE}}.pub"
   TARGET_FOLDER: "/unifi"
@@ -43,7 +43,17 @@ tasks:
       - task: ssh-exec
         vars:
           {
-            SSH_COMMAND: "sudo bash {{.TARGET_FOLDER}}/provision.sh",
+            SSH_COMMAND: "sudo usermod -aG docker {{.CLIENT_USER}}",
+          }
+      - task: ssh-exec
+        vars:
+          {
+            SSH_COMMAND: "sudo mkdir -p {{.TARGET_FOLDER}} && sudo chown {{.CLIENT_USER}} {{.TARGET_FOLDER}} && sudo chmod -R 770 {{.TARGET_FOLDER}}/",
+          }
+      - task: ssh-exec
+        vars:
+          {
+            SSH_COMMAND: "bash {{.TARGET_FOLDER}}/provision.sh",
           }
 
   raspberry:deploy:
@@ -58,9 +68,9 @@ tasks:
           {
             SSH_COMMAND: "sudo systemctl enable docker",
           }
-      - scp -i {{ .SSH_CERT_FILE }} {{.TASKFILE_DIR}}/unifi/docker-compose.yaml {{.CLIENT_USER}}@{{.CLIENT_HOST}}:{{.TARGET_FOLDER}}/
+      - scp -i {{ .SSH_CERT_FILE }} {{.TASKFILE_DIR}}/docker-compose.yaml {{.CLIENT_USER}}@{{.CLIENT_HOST}}:{{.TARGET_FOLDER}}/
       - task: ssh-exec
         vars:
           {
-            SSH_COMMAND: "cd {{.TARGET_FOLDER}} && sudo docker compose up -d ",
+            SSH_COMMAND: "cd {{.TARGET_FOLDER}} && sudo docker compose up -d --force-recreate",
           }
